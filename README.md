@@ -11,7 +11,7 @@ currently only provides (potentially quite buggy) support for renaming symbols.
 To do that, position your cursor on a symbol you'd like to rename and run:
 
 ```vim
-:Hrename new-symbol-name
+:Hrename newSymbolName
 ```
 
 HaRe.vim will provide you a preview window with a diff of the pending refactor.
