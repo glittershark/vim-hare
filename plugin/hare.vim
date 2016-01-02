@@ -31,7 +31,6 @@ endfunction
 
 " }}}
 
-
 " Running HaRe {{{
 
 function! s:hare(command, ...)
@@ -89,9 +88,10 @@ function! s:preview_diff()
           \ s:diff_command(curr_file, s:hare_newfile(curr_file))
   finally
     norm gg
-    norm OPress <enter> to apply refactor
+    norm OPress <enter> to apply refactor, 'q' to abort
     call s:hare_setup_preview()
-    nnoremap <buffer> <CR> :execute <SID>ApplyDiff()<CR>
+    nnoremap <buffer> <CR> :silent execute <SID>ApplyDiff()<CR>
+    nnoremap <buffer> q :silent execute <SID>AbortRefactor()<CR>
   endtry
 endfunction
 
@@ -108,8 +108,18 @@ function! s:ApplyDiff()
     call system('rm -f ' . newfile)
     1delete
   finally
+    " TODO: this doesn't seem to do anything
     call cursor(b:hare_previous_position[1], b:hare_previous_position[2])
+    redraw
   endtry
+endfunction
+
+function! s:AbortRefactor()
+  let newfile = s:hare_newfile(b:target_file)
+  execute bufwinnr(b:target_buf) . 'wincmd w'
+  wincmd z
+  call system('rm -f ' . newfile)
+  redraw
 endfunction
 
 " }}}
