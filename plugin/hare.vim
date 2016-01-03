@@ -35,7 +35,13 @@ endfunction
 function! s:hare_parse(source)
   " danger, horrible (horrible, horrible) hacks ahead
   let ok = 1
-  return eval(substitute(tr(a:source, '() ', '[],'), '\n', '', 'e'))
+  let error = 0
+  let trimmed = substitute(substitute(substitute(
+        \ tr(a:source, '()', '[]')
+        \ , '\n', '', 'e')
+        \ , '" "', '","', 'g')
+        \ , '\(\a\) "', '\1,"', 'g')
+  return eval(trimmed)
 endfunction
 
 function! s:hare(command, ...)
@@ -183,13 +189,18 @@ endfunction
 
 function! s:HareRename(newname)
   let b:hare_previous_position = getpos('.')
-  echom "Renaming symbols..."
+  echo "Renaming symbols..."
   let result = s:hare('rename',
         \ a:newname, b:hare_previous_position[1], b:hare_previous_position[2])
 
   if v:shell_error ==? 0 && result[0] ==? 1
     echo result[1]
     call s:preview_diff(result[1])
+  elseif result[0] ==? 0
+    echohl WarningMsg
+    echo result[1]
+    echohl None
+    call cursor(b:hare_previous_position[1], b:hare_previous_position[2])
   endif
 endfunction
 
