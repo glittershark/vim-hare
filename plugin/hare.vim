@@ -19,6 +19,24 @@ endif
 
 " }}}
 
+" Output {{{
+function! s:warn(message)
+  echohl WarningMsg
+  echo a:message
+  echohl None
+endfunction
+
+function! s:info(message)
+  echo a:message
+endfunction
+
+function! s:dbg(message)
+  if g:hare_debug
+    echom a:message
+  endif
+endfunction
+" }}}
+
 " Window utilities {{{
 function! s:hare_setup_preview()
   30wincmd _
@@ -39,12 +57,12 @@ function! s:hare_parse(source)
   let trimmed = substitute(substitute(substitute(
         \ tr(a:source, '()', '[]')
         \ , '\n', '', 'e')
-        \ , '" "', '","', 'g')
-        \ , '\(\a\) "', '\1,"', 'g')
+        \ , '" "', '","', 'eg')
+        \ , '\(\a\) \([["]\)', '\1,\2', 'eg')
   return eval(trimmed)
 endfunction
 
-function! s:hare(command, ...)
+function! s:hare(command, ...) abort
   let filename = expand('%:p')
   let l:cmd = join([g:hare_executable, a:command, filename] + a:000, ' ')
 
@@ -52,12 +70,9 @@ function! s:hare(command, ...)
   let prev_cwd = getcwd()
   execute 'lcd ' . expand('%:h')
 
-  silent let result = system(l:cmd)
-
   " Run the command
-  if g:hare_debug
-    echom l:result
-  endif
+  silent let result = system(l:cmd)
+  call s:dbg(result)
 
   " lcd back
   execute 'lcd ' . prev_cwd
@@ -95,7 +110,6 @@ function! s:preview_diff(touched_files)
   " Read diff into window
   try
     for touched in a:touched_files
-      echom touched
       let cmd = s:diff_command(touched, s:refactored_filename(touched))
       execute 'silent read !' . cmd
       norm Go
@@ -182,24 +196,29 @@ function! s:HareLiftOneLevel()
 endfunction
 
 function! s:HareLiftToTopLevel()
-  let cursor = getpos('.')
-  call s:hare('liftToTopLevel', a:newname, cursor[1], cursor[2])
-  call cursor(cursor[1], cursor[2])
+  let b:hare_previous_position = getpos('.')
+  call s:info("Lifting definition to a top-level function...")
+  let result = s:hare('liftToTopLevel',
+        \ b:hare_previous_position[1], b:hare_previous_position[2])
+
+  if v:shell_error ==? 0 && result[0] ==? 1
+    call s:preview_diff(result[1])
+  elseif result[0] ==? 0
+    call s:warn(result[1])
+    call cursor(b:hare_previous_position[1], b:hare_previous_position[2])
+  endif
 endfunction
 
 function! s:HareRename(newname)
   let b:hare_previous_position = getpos('.')
-  echo "Renaming symbols..."
+  call s:info("Renaming symbols...")
   let result = s:hare('rename',
         \ a:newname, b:hare_previous_position[1], b:hare_previous_position[2])
 
   if v:shell_error ==? 0 && result[0] ==? 1
-    echo result[1]
     call s:preview_diff(result[1])
   elseif result[0] ==? 0
-    echohl WarningMsg
-    echo result[1]
-    echohl None
+    call s:warn(result[1])
     call cursor(b:hare_previous_position[1], b:hare_previous_position[2])
   endif
 endfunction
@@ -213,7 +232,7 @@ endfunction
 " command! -nargs=1 Hdupdef    execute s:HareDupdef(<f-args>)
 " command!          Hiftocase  execute s:HareIftocase()
 " command!          Hliftone   execute s:HareLiftOneLevel()
-" command!          Hlifttotop execute s:HareLiftToTopLevel()
+command!          Hlifttotop execute s:HareLiftToTopLevel()
 command! -nargs=1 Hrename    execute s:HareRename(<f-args>)
 
 " }}}

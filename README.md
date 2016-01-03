@@ -6,17 +6,19 @@ Vim bindings to the [HaRe Haskell refactoring tool][hare-upstream]
 
 ## Usage
 
-This plugin is solidly WIP / holiday project status at the moment, and so
-currently only provides (potentially quite buggy) support for renaming symbols.  
-To do that, position your cursor on a symbol you'd like to rename and run:
+This plugin is solidly WIP / holiday project status at the moment, and so there
+could be bugs lurking around any corner.
 
-```vim
-:Hrename newSymbolName
-```
+All commands listed below will provide a preview window with a diff of all files
+affected by the pending refactor. Pressing <kbd>Enter</kbd> in this window will
+apply the refactor to all affected files, but not save them. Pressing
+<kbd>q</kbd> will abort.
 
-HaRe.vim will provide you a preview window with a diff of the pending refactor.
-You can press <kbd>Enter</kbd> in this window to confirm and apply the refactor
-(but not save the file) or <kbd>q</kbd> to abort.
+### Commands:
+
+- `:Hrename newSymbolName` - Rename symbol under the cursor to newSymbolName
+- `:Hlifttotop` - Lift local function definition under the cursor to the
+  top level
 
 ## Installation
 
