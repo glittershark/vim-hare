@@ -32,6 +32,11 @@ endfunction
 " }}}
 
 " Running HaRe {{{
+function! s:hare_parse(source)
+  " danger, horrible (horrible, horrible) hacks ahead
+  let ok = 1
+  return eval(substitute(tr(a:source, '() ', '[],'), '\n', '', 'e'))
+endfunction
 
 function! s:hare(command, ...)
   let filename = expand('%:p')
@@ -41,11 +46,11 @@ function! s:hare(command, ...)
   let prev_cwd = getcwd()
   execute 'lcd ' . expand('%:h')
 
+  silent let result = system(l:cmd)
+
   " Run the command
   if g:hare_debug
-    echo system(l:cmd)
-  else
-    call system(l:cmd)
+    echom l:result
   endif
 
   " lcd back
@@ -54,22 +59,21 @@ function! s:hare(command, ...)
   if v:shell_error > 0
     throw 'HaRe: error running command'
   endif
-endfunction
 
+  return s:hare_parse(l:result)
+endfunction
 " }}}
 
 " Managing diffs {{{
-
-function! s:hare_newfile(oldfile)
+function! s:refactored_filename(oldfile)
   return substitute(a:oldfile, '\.hs', '.refactored.hs', '')
 endfunction
-
 
 function! s:diff_command(before, after)
   return 'diff -u ' . a:before . ' ' . a:after
 endfunction
 
-function! s:preview_diff()
+function! s:preview_diff(touched_files)
   let curr_file = expand('%:p')
   let curr_buf = bufname('%')
 
@@ -80,34 +84,51 @@ function! s:preview_diff()
   set filetype=diff
   let b:target_file = curr_file
   let b:target_buf = curr_buf
+  let b:touched_files = a:touched_files
 
   " Read diff into window
-  let cmd = s:diff_command(curr_file, s:hare_newfile(curr_file))
   try
-    execute 'silent read !' .
-          \ s:diff_command(curr_file, s:hare_newfile(curr_file))
+    for touched in a:touched_files
+      echom touched
+      let cmd = s:diff_command(touched, s:refactored_filename(touched))
+      execute 'silent read !' . cmd
+      norm Go
+    endfor
   finally
     norm gg
     norm OPress <enter> to apply refactor, 'q' to abort
     call s:hare_setup_preview()
     nnoremap <buffer> <CR> :silent execute <SID>ApplyDiff()<CR>
     nnoremap <buffer> q :silent execute <SID>AbortRefactor()<CR>
+    augroup harediff
+      autocmd!
+      autocmd BufLeave * silent execute <SID>AbortRefactor() | autocmd! harediff
+    augroup END
   endtry
 endfunction
 
 function! s:ApplyDiff()
-  " Switch to target buffer
+  " Switch to original window
+  let l:touched_files = b:touched_files
   let l:target_file = b:target_file
+  let l:target_buf = b:target_buf
+  autocmd! harediff
   execute bufwinnr(b:target_buf) . 'wincmd w'
   wincmd z
-  " Apply diff
-  %delete
+
   try
-    let newfile = s:hare_newfile(l:target_file)
-    execute 'silent read' newfile
-    call system('rm -f ' . newfile)
-    1delete
+    " Apply diff to all files
+    for tgt in l:touched_files
+      execute 'edit ' . tgt
+      %delete
+      let newfile = s:refactored_filename(tgt)
+      execute 'silent read' newfile
+      1delete
+
+      call system('rm -f ' . newfile)
+    endfor
   finally
+    execute 'buffer' l:target_buf
     " TODO: this doesn't seem to do anything
     call cursor(b:hare_previous_position[1], b:hare_previous_position[2])
     redraw
@@ -115,10 +136,13 @@ function! s:ApplyDiff()
 endfunction
 
 function! s:AbortRefactor()
-  let newfile = s:hare_newfile(b:target_file)
+  let l:touched_files = b:touched_files
+  for tgt in l:touched_files
+    call system('rm -f ' . s:refactored_filename(tgt))
+  endfor
+
   execute bufwinnr(b:target_buf) . 'wincmd w'
   wincmd z
-  call system('rm -f ' . newfile)
   redraw
 endfunction
 
@@ -160,11 +184,12 @@ endfunction
 function! s:HareRename(newname)
   let b:hare_previous_position = getpos('.')
   echom "Renaming symbols..."
-  call s:hare('rename',
+  let result = s:hare('rename',
         \ a:newname, b:hare_previous_position[1], b:hare_previous_position[2])
 
-  if v:shell_error ==? 0
-    call s:preview_diff()
+  if v:shell_error ==? 0 && result[0] ==? 1
+    echo result[1]
+    call s:preview_diff(result[1])
   endif
 endfunction
 
