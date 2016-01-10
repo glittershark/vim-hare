@@ -19,6 +19,8 @@ apply the refactor to all affected files, but not save them. Pressing
 - `:Hrename newSymbolName` - Rename symbol under the cursor to newSymbolName
 - `:Hlifttotop` - Lift local function definition under the cursor to the
   top level
+- `:Hiftocase` - if an *entire* `if`/`then`/`else` expression is highlighted in
+  visual mode, converts that expression to a `case` statement
 
 ## Installation
 

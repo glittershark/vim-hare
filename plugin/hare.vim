@@ -71,6 +71,7 @@ function! s:hare(command, ...) abort
   execute 'lcd ' . expand('%:h')
 
   " Run the command
+  call s:dbg(l:cmd)
   silent let result = system(l:cmd)
   call s:dbg(result)
 
@@ -183,10 +184,17 @@ function! s:HareDupdef(newname)
 endfunction
 
 function! s:HareIftocase()
-  let cursor = getpos('.')
+  let b:hare_previous_position = getpos('.')
   let start = getpos("'<")
   let end = getpos("'>")
-  call s:hare('iftocase', a:newname, start[1], start[2], end[1], end[2])
+  let result = s:hare('iftocase', start[1], start[2], end[1], end[2])
+
+  if v:shell_error ==? 0 && result[0] ==? 1
+    call s:preview_diff(result[1])
+  elseif result[0] ==? 0
+    call s:warn(result[1])
+    call cursor(b:hare_previous_position[1], b:hare_previous_position[2])
+  endif
 endfunction
 
 function! s:HareLiftOneLevel()
@@ -230,7 +238,7 @@ endfunction
 " TODO
 " command!          Hdemote    execute s:HareDemote()
 " command! -nargs=1 Hdupdef    execute s:HareDupdef(<f-args>)
-" command!          Hiftocase  execute s:HareIftocase()
+command! -range     Hiftocase  execute s:HareIftocase()
 " command!          Hliftone   execute s:HareLiftOneLevel()
 command!          Hlifttotop execute s:HareLiftToTopLevel()
 command! -nargs=1 Hrename    execute s:HareRename(<f-args>)
