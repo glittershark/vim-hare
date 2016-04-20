@@ -36,8 +36,8 @@ set `g:hare_executable` to something like `cabal exec -- ghc-hare`, though
 obviously this won't work on a per-project basis.
 
 Another caveat, [mentioned in the hare docs][ghc-version], is that HaRe doesn't
-like GHC versions before 7.10.2. Make sure you're running 7.10.2 at a system
-level and also at a per-project level.
+like GHC versions before 7.10.2. Make sure you're running 7.10.2 or greater at 
+a system level and also at a per-project level.
 
 [ghc-version]: https://github.com/alanz/HaRe#limitations
 
